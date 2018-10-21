@@ -134,7 +134,7 @@ public class Triangolo extends Figura
        {
         if(fi2!=null)
           {
-           System.out.println(fi);
+           System.out.println(fi2);
           }
        }
      

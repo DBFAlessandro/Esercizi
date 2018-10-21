@@ -68,7 +68,7 @@ public class Pentagono extends Figura
            
         } catch (FiguraBadSideException ex) 
         {
-          System.out.println(ex.toString()); 
+          System.out.println(ex); 
         }
        finally
         {

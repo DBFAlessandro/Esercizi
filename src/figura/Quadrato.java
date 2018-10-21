@@ -79,13 +79,13 @@ public class Quadrato extends Figura
         } 
         catch (FiguraBadSideException ex)
         {
-          System.out.println(fi);
+          System.out.println(ex);
         }
          finally
         {
            if(fi2!=null)
            {
-             System.out.println(q);
+             System.out.println(fi2);
            }
         }
      }
