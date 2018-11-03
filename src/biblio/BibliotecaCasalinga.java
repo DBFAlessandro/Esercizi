@@ -200,7 +200,7 @@ public class BibliotecaCasalinga implements IBiblioteca
         String SQL = "";
        
         int nr = 0;
-        try(PreparedStatement stmt = con.prepareStatement(SQL))
+        try(PreparedStatement stmt = con.prepareStatement(ADD_PRESTITO))
         {
             stmt.setInt(1, p.getUtente().getID());
             stmt.setInt(2, maxP);
