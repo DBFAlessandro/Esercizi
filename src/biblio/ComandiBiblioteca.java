@@ -21,10 +21,10 @@ public class ComandiBiblioteca
     public static final String SUPER_SECRET_CONNECTION = "jdbc:mysql://localhost:3306/biblioteca?zeroDateTimeBehavior=convertToNull&serverTimezone=UTC";
     public static final String SUPER_SECRET_USER       = "root";
     public static final String SUPER_SECRET_PWD        = "root";
-    
+
+    //cambiare questa per eventuali messaggi
     public static final boolean DEFAULT_WARNING = false;
     public static final boolean DEFAULT_ERROR   = true;
-     
-    
+   
     
 }

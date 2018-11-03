@@ -18,6 +18,26 @@ import java.util.ArrayList;
 public class BibliotecaCasalinga implements IBiblioteca
 {
 
+    
+     
+
+    private static final String BIBLIOTECAEXCEPTIONMSG0 = "La biblioteca è momentanamente fuori servizio, andate al bar!";
+    private static final String GET_LIBRI_STATEMENT           = "SELECT IDL,Autore,Titolo,Edizione from libri where IDU IS NULL AND DataP IS NULL;";
+    private static final String GET_UTENTI_STATEMENT          = "SELECT * from utenti;";
+    private static final String GET_PRESTITI_STATEMENT        = "SELECT * from libri inner join utenti on libri.IDU = utenti.IDU order by IDL;";
+    private static final String REM_PRESTITO                  = "UPDATE libri SET DataP=NULL,IDU=NULL WHERE IDL = ? AND IDU = ? AND DataP = ?";
+ //MACHECCAZOOOOOOOOOO??????
+        //NON SONO AFFATTO CONVINTO DI QQUESTA SBRODOLATA DI CARATTERI
+    private static final String ADD_PRESTITO                  = "UPDATE libri SET DataP=now(),IDU=? WHERE IDL IN "
+                   + "("
+                       + " SELECT IDL"
+                        + " FROM (SELECT * from libri FOR UPDATE) AS L1"
+                          + " WHERE"
+                           +" ? > (SELECT count(*) from (SELECT * from libri) AS L1 WHERE L1.IDU = ? FOR UPDATE) FOR UPDATE"
+                   + ")"
+                   + " AND IDL = ? AND IDU IS NULL AND DataP is NULL"
+                   + ";";
+    
     //all'inizio tutto era statico 
     private static Connection connect()
     {  
@@ -56,14 +76,13 @@ public class BibliotecaCasalinga implements IBiblioteca
     //TUTTI I LIBRI DISPONIBILI
     private static ArrayList<Libro> getLibri(Connection con)
     {
-       String SQL = "SELECT IDL,Autore,Titolo,Edizione from libri where IDU IS NULL AND DataP IS NULL;";
-       
+      
        ArrayList<Libro> libri = new ArrayList<>();
                
-       try 
+       try(Statement stmt = con.createStatement())
        {
-            Statement stmt = con.createStatement();
-            ResultSet res  = stmt.executeQuery(SQL);
+   
+            ResultSet res  = stmt.executeQuery(GET_LIBRI_STATEMENT);
             
             while(res.next())
             {
@@ -80,20 +99,18 @@ public class BibliotecaCasalinga implements IBiblioteca
     }
  private static ArrayList<Utente> getUtenti(Connection con)
     {
-       String SQL = "SELECT * from utenti;";
-       
+  
        ArrayList<Utente> utenti = new ArrayList<>();
                
-       try 
+       try(Statement stmt = con.createStatement())
        {
-            Statement stmt = con.createStatement();
-            ResultSet res  = stmt.executeQuery(SQL);
+            ResultSet res  = stmt.executeQuery(GET_UTENTI_STATEMENT);
             
             while(res.next())
             {
                utenti.add(new Utente(res.getInt("IDU"),res.getString("nominativo"),res.getString("Indirizzo")));
             }
-            
+
        } catch (SQLException ex) 
        {
           gestisciErroreSQL(ex);
@@ -103,39 +120,30 @@ public class BibliotecaCasalinga implements IBiblioteca
        
     }
  
- //HO 3 METODO OVERLOADATI PER LE 3 SELECT SUI PRESTITI
- //TUTTI I PRESTITI
- private static ArrayList<Prestito> getPrestiti(Connection con)
-    {
-       String SQL = "SELECT * from libri inner join utenti on libri.IDU = utenti.IDU order by IDL;";
-       
-       return getPrestitiSQL(con,SQL);
-       
+   //HO 3 METODO OVERLOADATI PER LE 3 SELECT SUI PRESTITI
+   //TUTTI I PRESTITI
+   private static ArrayList<Prestito> getPrestiti(Connection con)
+    { 
+       return getPrestitiSQL(con,GET_PRESTITI_STATEMENT);  
     }
- //TUTTI I PRESTITI DELL'UTENTE
-  private static ArrayList<Prestito> getPrestiti(Connection con,Utente utente)
+   //TUTTI I PRESTITI DELL'UTENTE
+   private static ArrayList<Prestito> getPrestiti(Connection con,Utente utente)
     {
-       String SQL = "SELECT * from libri inner join utenti on libri.IDU = utenti.IDU where utenti.IDU = "+utente.getID()+";";
-       
-       return getPrestitiSQL(con,SQL);
-       
+       return getPrestitiSQL(con,"SELECT * from libri inner join utenti on libri.IDU = utenti.IDU where utenti.IDU = "+utente.getID()+";");
     }
-  //cerco x alcuni parametri ugiualgianza stretta ma potrei fare wildc.., non ID, dovevo aggiunger ISBN a fare bene ma non c'era nell'esercizio...
-   private static ArrayList<Prestito> getPrestiti(Connection con,Libro libro)
+    //cerco x alcuni parametri ugiualgianza stretta ma potrei fare wildc.., non ID, dovevo aggiunger ISBN a fare bene ma non c'era nell'esercizio...
+    private static ArrayList<Prestito> getPrestiti(Connection con,Libro libro)
     {
-       String SQL = "SELECT * from libri inner join utenti on libri.IDU = utenti.IDU where libri.Autore = '"+libro.getAutore()+"' AND libri.Edizione="+ libro.getEdizione() +" AND libri.Titolo='"+libro.getTitolo()+"';";
-       
-        return getPrestitiSQL(con,SQL);
-       
+        return getPrestitiSQL(con,"SELECT * from libri inner join utenti on libri.IDU = utenti.IDU where libri.Autore = '"+libro.getAutore()+"' AND libri.Edizione="+ libro.getEdizione() +" AND libri.Titolo='"+libro.getTitolo()+"';");
     }
    
      private static ArrayList<Prestito> getPrestitiSQL(Connection con,String SQL)
     {
        ArrayList<Prestito> prestiti = new ArrayList<>();
                
-       try 
+                
+       try(Statement stmt = con.createStatement())
        {
-            Statement stmt = con.createStatement();
             ResultSet res  = stmt.executeQuery(SQL);
             
             while(res.next())
@@ -156,92 +164,70 @@ public class BibliotecaCasalinga implements IBiblioteca
     }
  private static boolean remPrestito(Connection con,Prestito p) throws BibliotecaException
     {
-     
-       String SQL = "UPDATE libri SET DataP=NULL,IDU=NULL WHERE IDL = ? AND IDU = ? AND DataP = ?";
-       try 
+       String SQL = "";
+       //HO SPOSTATO 2 COSE x gestire meglio le chiusure ed eccezzioni
+       int nr = 0;
+      
+       try(PreparedStatement stmt = con.prepareStatement(REM_PRESTITO))
        {
-           //non ho biisogno di risultset
-           
-           //QUESTA VOLTA USO I PREPARED STATEMENT
-           //uso prepareStatemente anzichè create
-    
-            PreparedStatement stmt = con.prepareStatement(SQL);
-            
+       
             stmt.setInt(1, p.getLibro().getID());
             stmt.setInt(2, p.getUtente().getID());
             stmt.setString(3, p.getData());
-           
-            int nr = stmt.executeUpdate();
-         
-            if(nr > 1)
-            {
-              throw new BibliotecaException("Lo statement \n" + SQL + "\n" + "doveva aggiornare 1 record anzichè " + nr);
-            }
             
-            //potrebbe essere un update da informazione 
-            //non sincronizzate con il db
-            return (nr == 1);
-
+            SQL = stmt.toString();
+            
+            nr = stmt.executeUpdate();
+            stmt.close();
+      
        }
        catch (SQLException ex) 
        {
          gestisciErroreSQL(ex);
        }
-         return false;
+       
+       if(nr > 1)
+        {    
+           throw new BibliotecaException(SQL,nr,1);
+         }
+            
+        return (nr == 1);
     }
  
     private static boolean addPrestito(Connection con,Prestito p,int maxP) throws BibliotecaException
     {
-       //MACHECCAZOOOOOOOOOO??????
-        //NON SONO AFFATTO CONVINTO DI QQUESTA SBRODOLATA DI CARATTERI
-       String SQL = "UPDATE libri SET DataP=now(),IDU=? WHERE IDL IN "
-                   + "("
-                       + " SELECT IDL"
-                        + " FROM (SELECT * from libri FOR UPDATE) AS L1"
-                          + " WHERE"
-                           +" ? > (SELECT count(*) from (SELECT * from libri) AS L1 WHERE L1.IDU = ? FOR UPDATE) FOR UPDATE"
-                   + ")"
-                   + " AND IDL = ? AND IDU IS NULL AND DataP is NULL"
-                   + ";";
-     
-       try 
-       {
-           //non ho biisogno di risultset
-           
-           //QUESTA VOLTA USO I PREPARED STATEMENT
-           //uso prepareStatemente anzichè create
-    
-            PreparedStatement stmt = con.prepareStatement(SQL);
-            
-           
+       
+        String SQL = "";
+       
+        int nr = 0;
+        try(PreparedStatement stmt = con.prepareStatement(SQL))
+        {
             stmt.setInt(1, p.getUtente().getID());
             stmt.setInt(2, maxP);
             stmt.setInt(3, p.getUtente().getID());
             stmt.setInt(4, p.getLibro().getID());
            
+            SQL = stmt.toString();
             
-            int nr = stmt.executeUpdate();
-         
-            if(nr > 1)
-            {
-                //QUA IL DB E' IN FRITTATA
-              throw new BibliotecaException("Lo statement \n" + SQL + "\n" + "doveva aggiornare 1 record anzichè " + nr);
-            }
-            
-            //potrebbe essere un update da informazione 
-            //non sincronizzate con il db
-            return (nr == 1);
-
+            nr = stmt.executeUpdate();
+        
        }
        catch (SQLException ex) 
        {
          gestisciErroreSQL(ex);
        }
-      return false;
+        
+       if(nr > 1)
+       {
+          throw new BibliotecaException(SQL,nr,1);
+        }
+        
+      return (nr == 1);
     }
+    
     private static void gestisciErroreSQL(SQLException ex)
     {
-           System.out.println(ex);
+       System.out.println(ex);
     }
 
     
@@ -323,13 +309,18 @@ public class BibliotecaCasalinga implements IBiblioteca
    public static class BibliotecaException extends ABibliotecaException
    {
        //FORSE DOPO UN CAFFETTINO SI RIPIGLIA
-       private String MESSAGE = "La biblioteca è momentanamente fuori servizio, andate al bar!";
+       private String MESSAGE = BIBLIOTECAEXCEPTIONMSG0;
        public BibliotecaException()
        {}
         public BibliotecaException(String message)
        {
          MESSAGE = message;
        }
+        public BibliotecaException(String statement,int result,int expected)
+        {
+          MESSAGE = "Lo statement \n" +  statement + "\n ha aggiornato :" + result +" anzichè "+expected;
+        }
+        
        @Override
        public String toString()
        {
