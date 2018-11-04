@@ -12,7 +12,8 @@ import java.util.ArrayList;
 public interface IBiblioteca extends AutoCloseable
 
 {
-
+    Libro    getLibro(Libro daCercare);
+    Utente   getUtente(Utente daCercare);
     ArrayList<Libro>    getLibri();
     ArrayList<Prestito> getPrestiti();
     ArrayList<Prestito> getPrestiti(Libro libro);

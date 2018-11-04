@@ -18,17 +18,17 @@ import java.util.ArrayList;
 public class BibliotecaCasalinga implements IBiblioteca
 {
 
-    
-     
-
-    private static final String BIBLIOTECAEXCEPTIONMSG0 = "La biblioteca è momentanamente fuori servizio, andate al bar!";
+    private static final String BIBLIOTECAEXCEPTIONMSG0       = "La biblioteca è momentanamente fuori servizio, andate al bar!";
+        
+    private static final String GET_LIBRO_STATEMENT           = "SELECT IDL,Autore,Titolo,Edizione from libri where IDL=?;";
+    private static final String GET_UTENTE_STATEMENT          = "SELECT * from utenti WHERE IDU =?;";
     private static final String GET_LIBRI_STATEMENT           = "SELECT IDL,Autore,Titolo,Edizione from libri where IDU IS NULL AND DataP IS NULL;";
     private static final String GET_UTENTI_STATEMENT          = "SELECT * from utenti;";
     private static final String GET_PRESTITI_STATEMENT        = "SELECT * from libri inner join utenti on libri.IDU = utenti.IDU order by IDL;";
-    private static final String REM_PRESTITO                  = "UPDATE libri SET DataP=NULL,IDU=NULL WHERE IDL = ? AND IDU = ? AND DataP = ?";
+    private static final String REM_PRESTITO                  = "UPDATE libri SET DataP=NULL,IDU=NULL WHERE IDL = ? AND IDU = ? AND DataP = ?;";
  //MACHECCAZOOOOOOOOOO??????
         //NON SONO AFFATTO CONVINTO DI QQUESTA SBRODOLATA DI CARATTERI
-    private static final String ADD_PRESTITO                  = "UPDATE libri SET DataP=now(),IDU=? WHERE IDL IN "
+    private static final String ADD_PRESTITO_MY_SQL           = "UPDATE libri SET DataP=now(),IDU=? WHERE IDL IN "
                    + "("
                        + " SELECT IDL"
                         + " FROM (SELECT * from libri FOR UPDATE) AS L1"
@@ -38,11 +38,16 @@ public class BibliotecaCasalinga implements IBiblioteca
                    + " AND IDL = ? AND IDU IS NULL AND DataP is NULL"
                    + ";";
     
+    private static final String ADD_PRESTITO_SQL_LITE = "UPDATE libri SET DataP=DATETIME('now'),IDU=? WHERE (? > (SELECT count(*) FROM libri WHERE IDU=? AND DataP IS NOT NULL)) AND IDL=? AND IDU IS NULL AND DataP is NULL;";
+  
     //all'inizio tutto era statico 
     private static Connection connect()
     {  
         try
         {
+            
+          
+            
             return DriverManager.getConnection
                      (
                       ComandiBiblioteca.SUPER_SECRET_CONNECTION,
@@ -119,7 +124,54 @@ public class BibliotecaCasalinga implements IBiblioteca
        return utenti;
        
     }
- 
+  private static Utente getUtente(Connection con,Utente daCercare)
+    {
+  
+       Utente utente = null;
+               
+       try(PreparedStatement stmt = con.prepareStatement(GET_UTENTE_STATEMENT))
+       {
+           
+            stmt.setInt(1,daCercare.getID());
+            ResultSet res  = stmt.executeQuery();
+            
+            while(res.next())
+            {
+               utente = new Utente(res.getInt("IDU"),res.getString("nominativo"),res.getString("Indirizzo"));
+            }
+
+       } catch (SQLException ex) 
+       {
+          gestisciErroreSQL(ex);
+       }
+       
+       return utente;
+       
+    }
+    private static Libro getLibro(Connection con,Libro daCercare)
+    {
+  
+       Libro libro = null;
+               
+       try(PreparedStatement stmt = con.prepareStatement(GET_LIBRO_STATEMENT))
+       {
+           
+            stmt.setInt(1,daCercare.getID());
+            ResultSet res  = stmt.executeQuery();
+            
+            while(res.next())
+            {
+               libro = new Libro(res.getInt("IDL"),res.getString("Autore"),res.getString("Titolo"),res.getInt("Edizione"));
+            }
+
+       } catch (SQLException ex) 
+       {
+          gestisciErroreSQL(ex);
+       }
+       
+       return libro;
+       
+    }
    //HO 3 METODO OVERLOADATI PER LE 3 SELECT SUI PRESTITI
    //TUTTI I PRESTITI
    private static ArrayList<Prestito> getPrestiti(Connection con)
@@ -200,8 +252,21 @@ public class BibliotecaCasalinga implements IBiblioteca
         String SQL = "";
        
         int nr = 0;
+        
+        String ADD_PRESTITO = "";
+          switch(ComandiBiblioteca.DRIVER)
+            {
+                case ComandiBiblioteca.SQLITE3
+                        :  ADD_PRESTITO = ADD_PRESTITO_SQL_LITE; break;
+                case ComandiBiblioteca.MYSQL8
+                        : ADD_PRESTITO = ADD_PRESTITO_MY_SQL; break;
+                default:
+                    break;
+            }
+        
         try(PreparedStatement stmt = con.prepareStatement(ADD_PRESTITO))
         {
+           
             stmt.setInt(1, p.getUtente().getID());
             stmt.setInt(2, maxP);
             stmt.setInt(3, p.getUtente().getID());
@@ -237,6 +302,9 @@ public class BibliotecaCasalinga implements IBiblioteca
     
     public BibliotecaCasalinga() throws BibliotecaException
     {
+        
+        
+          
       if((conn = connect()) == null)
        {
         throw new BibliotecaException();
@@ -302,6 +370,16 @@ public class BibliotecaCasalinga implements IBiblioteca
         // if (true) throw new BibliotecaException("TEST BAD ERRORS");
         return addPrestito(conn,p,getPrestitoMassimo());
       
+    }
+
+    @Override
+    public Libro getLibro(Libro daCercare) {
+        return getLibro(conn,daCercare);
+    }
+
+    @Override
+    public Utente getUtente(Utente daCercare) {
+        return getUtente(conn,daCercare);
     }
   
    //INNER CLASS PER E CCEZIONI CUSTOM , DEVE ESSERE STATITICA PER  ESISTERE FUORI DALL'ISTANZA SENZA COSTRUIRLA

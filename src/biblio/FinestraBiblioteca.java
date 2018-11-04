@@ -8,7 +8,6 @@ package biblio;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
-import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
@@ -53,6 +52,7 @@ public class FinestraBiblioteca extends javax.swing.JFrame implements Aggiornabi
         jShowBooksByUser = new javax.swing.JButton();
         jShowBooksByBook = new javax.swing.JButton();
         jShowBooksByUsers = new javax.swing.JButton();
+        jShowBook = new javax.swing.JButton();
         jRemovePrestito = new javax.swing.JButton();
         jCenterPanel = new javax.swing.JPanel();
         jSUtentiCenterUp = new javax.swing.JScrollPane();
@@ -105,6 +105,10 @@ public class FinestraBiblioteca extends javax.swing.JFrame implements Aggiornabi
 
         jShowBooksByUsers.setText(ComandiBiblioteca.GET_PRESTITI);
         jSouthPanel.add(jShowBooksByUsers);
+
+        jShowBook.setText(ComandiBiblioteca.GET_LIBRO);
+        jShowBook.setToolTipText("");
+        jSouthPanel.add(jShowBook);
 
         jRemovePrestito.setText(ComandiBiblioteca.REM_PRESTITO_UTENTE);
         jRemovePrestito.setToolTipText("");
@@ -175,6 +179,7 @@ public class FinestraBiblioteca extends javax.swing.JFrame implements Aggiornabi
     private javax.swing.JScrollPane jSLibriCenterDown;
     private javax.swing.JScrollPane jSPrestitiEast;
     private javax.swing.JScrollPane jSUtentiCenterUp;
+    private javax.swing.JButton jShowBook;
     private javax.swing.JButton jShowBooks;
     private javax.swing.JButton jShowBooksByBook;
     private javax.swing.JButton jShowBooksByUser;
@@ -189,6 +194,7 @@ public class FinestraBiblioteca extends javax.swing.JFrame implements Aggiornabi
     public void addListener(ActionListener listener) 
     {
        //ASSOCIO TUTTI I CONTROLLI CHE POSSONO FAR SCATURIRE UN'AZIONE QUA DETRO
+       this.jShowBook.addActionListener(listener);
        this.jShowBooks.addActionListener(listener);
        this.jShowUsers.addActionListener(listener);
        this.jShowBooksByUsers.addActionListener(listener);
@@ -337,6 +343,14 @@ public class FinestraBiblioteca extends javax.swing.JFrame implements Aggiornabi
                            {
                                ((DefaultTableModel)this.jBooks.getModel()).addRow(l.toTableRow());
                            }
+                           break;
+          case ComandiBiblioteca.GET_LIBRO :   
+              
+                           Libro libro = (Libro)data;
+                            if(libro!= null)
+                            {
+                              JOptionPane.showMessageDialog(this, libro, ComandiBiblioteca.GET_LIBRO,JOptionPane.INFORMATION_MESSAGE);
+                            }
                            break;
           case ComandiBiblioteca.GET_UTENTI :   
               

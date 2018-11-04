@@ -65,7 +65,13 @@ public class GestoreBiblioteca implements ActionListener
                          libroSelezionato  =  null;
                          result = biblio.getLibri();   
                          break;
-                         
+           case ComandiBiblioteca.GET_LIBRO : 
+                         //x ora la get libro agisce sul libro in prestito
+                         if(prestitoSelezionato !=null)
+                         {
+                            result = biblio.getLibro(prestitoSelezionato.getLibro()); 
+                         }
+                         break;              
            case ComandiBiblioteca.GET_UTENTI : 
                
                          utenteSelezionato = null;
